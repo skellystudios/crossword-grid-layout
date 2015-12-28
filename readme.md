@@ -17,8 +17,8 @@ check each current grid for compatability word-wise, and also for if the combo h
 (needs a hashing function?)
 
 
-# can only rotate a single word, not a grid
-# need to record if a particular grid has been checked for merges against any other grid
+- can only rotate a single word, not a grid
+- need to record if a particular grid has been checked for merges against any other grid
 
 do depth first search, use # interections as criteria for which item to mutate
 
@@ -35,29 +35,29 @@ DFS etc. strategies
 
 1. Naive DFS: Take one starting point, and iteratively add to it
 
-- Pointless as it doesn't ever generate any sub-pieces
+  - Pointless as it doesn't ever generate any sub-pieces
 
 
 2. Naive BFS: For each subgrid that currently exists, try to create 
    all pieces based on merging that with any currently extant subgrids,
    perhaps adding the new subgrid to the end of a queue
 
-- Definitely creates a bunch of subgrids, which is good, but doesn't pay 
-  any attention to whether it's generating an efficient grid in terms of 
-  intersection / intersection ratio
+  - Definitely creates a bunch of subgrids, which is good, but doesn't pay 
+    any attention to whether it's generating an efficient grid in terms of 
+    intersection / intersection ratio
 
 
 3. Always pick the piece with the best intersection/word ratio at the current time
 
-- Feels a little better than DFS, but I worry we'll still get bogged down in a 
-  local maximum for a long time and the search won't work
+  - Feels a little better than DFS, but I worry we'll still get bogged down in a 
+    local maximum for a long time and the search won't work
 
 
 4. Some sort of recursion, where we ask for a piece to try picked from the subgrids 
    that can be generated from the currently missing words.
 
-- Not sure how to implement recursive step, worry that it wouldn't be efficient / would 
-  just be DFS but from the other end
+  - Not sure how to implement recursive step, worry that it wouldn't be efficient / would 
+    just be DFS but from the other end
 
 
 Current favourite is number 3
