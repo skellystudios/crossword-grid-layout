@@ -27,6 +27,24 @@ class Grid():
 		self.matrix = np.array([map(lambda x: Letter(x), list(word))])
 		return self
 
+	def num_intersections(self):
+		intersections = 0
+		w, h = self.matrix.shape
+		for x in range(w):
+			for y in range(h):
+				if self.matrix[x][y].checked:
+					intersections += 1
+		return intersections
+
+	def unchecked_letters(self):
+		unchecked = []
+		w, h = self.matrix.shape
+		for x in range(w):
+			for y in range(h):
+				if self.matrix[x][y].string and not self.matrix[x][y].checked:
+					unchecked.append((self.matrix[x][y].string,x,y))
+		return unchecked
+
 	def __repr__(self):
 		return str(self.matrix)
 
@@ -266,6 +284,16 @@ class Letter():
 		letter = self.clone()
 		letter.reserved = False
 		return letter
+
+
+def matching_points(a,b):
+	return [
+	 ((x1,y1),(x2,y2)) 
+	 for (l1, x1, y1) in a.unchecked_letters() 
+	 for (l2, x2, y2) in b.unchecked_letters()
+	 if l1 == l2
+	]
+
 
 
 
