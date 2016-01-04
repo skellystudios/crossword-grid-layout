@@ -84,25 +84,72 @@ class Grid():
 			raise UnallowableMerge("Two grids already have words used in common")
 		result.words = list(set(self.words) & set(b_grid.words))
 
-		# calculate how much to offset each call for B by
+		# calculate the offset between a and b
 		offset = a_location - b_location
-		print offset
-		# for each item in a (TODO: optimise to only use the overlapping portions) 
-		# check that the letters match
 
-		# for (x,y), a_val in np.ndenumerate(a):
-		# 	adjusted = Point(x,y) + offset
+		# Now we create the new array. 
+		height, width = Grid.calculate_grid_size(a, b, offset)
+		a_holder = np.full((height,width), Letter(None), object)
+		b_holder = np.full((height,width), Letter(None), object)
 
-		# 	try:
-		# 		b_val = b[adjusted.x][adjusted.y]
-		# 	except IndexError:
-		# 		continue
-		# 	if b_val != a_val:
-		# 		raise UnallowableMerge()
+		# Calculate how much each grid should be offset against the new grid
+		a_offset = Point(min(0, offset.x) * -1, min(0,offset.y) * -1) 
+		b_offset = a_offset + offset
 
+		(a_w, a_h) = a.shape
+		(b_w, b_h) = b.shape
+		
+		# Add and b into their holders
+		a_holder[a_offset.x:a_offset.x+a_w, a_offset.y:a_offset.y+a_h] = a_holder[a_offset.x:a_offset.x+a_w, a_offset.y:a_offset.y+a_h] + a
+		b_holder[b_offset.x:b_offset.x+b_w, b_offset.y:b_offset.y+b_h] = b_holder[b_offset.x:b_offset.x+b_w, b_offset.y:b_offset.y+b_h] + b
+		
+		# We do two passes: the first to work out where there are going to be checked squares so we can 
+		pass_one = a_holder + b_holder
 
-		# Now we create the new array. There's probably a smarter way of doing this, but there you go.
-		# calculate the bounds of the new array
+		print pass_one
+
+		# We now want to make sure that squares next to an already taken square are reserved white space
+		# (Unless they're next to a square that becomes checked - will need to deal with that later)
+
+		for x in range(height):
+			for y in range(width):
+				print "__________"
+				print "__________"
+				print "__________"
+				print a_holder
+				print b_holder
+				print "" + str(x) + ", " + str(y)
+				print a_holder[x][y]
+				print Grid.neighbours(a_holder, x, y)
+				neighbours = Grid.neighbours(a_holder, x, y)
+				for x1, y1 in neighbours:
+					if a_holder[x1][y1].string and not a_holder[x][y].string:
+						a_holder[x][y] = a_holder[x][y].get_reserved()
+						print "bingo a"
+					if b_holder[x1][y1].string and not b_holder[x][y].string:
+						b_holder[x][y] = b_holder[x][y].get_reserved()
+						print b_holder[x][y]
+						print "bingo b"
+				for x1, y1 in neighbours:
+					if pass_one[x1][y1].checked:
+						print "wowzer"
+						a_holder[x][y] = a_holder[x][y].get_unreserved()
+						b_holder[x][y] = b_holder[x][y].get_unreserved()
+
+		print ""
+		print ""
+
+		print a_holder
+		print b_holder
+
+		# Add them together, and save in result.
+		# The add methods of Letter will deal with most of the matching work
+		result.matrix = a_holder + b_holder
+
+		return result 
+
+	@staticmethod
+	def calculate_grid_size(a, b, offset):
 		(a_w, a_h) = a.shape
 		(b_w, b_h) = b.shape
 		b_x_min = offset.x 
@@ -118,21 +165,20 @@ class Grid():
 		height = x_max - x_min
 		width = y_max - y_min
 
-		a_offset = Point(min(0, offset.x) * -1, min(0,offset.y) * -1) 
-		b_offset = a_offset + offset
-		
-		a_holder = np.full((height,width), Letter(None), object)
-		b_holder = np.full((height,width), Letter(None), object)
+		return (height, width)
 
-		# Add a onto the holder
-		a_holder[a_offset.x:a_offset.x+a_w, a_offset.y:a_offset.y+a_h] = a_holder[a_offset.x:a_offset.x+a_w, a_offset.y:a_offset.y+a_h] + a
-		b_holder[b_offset.x:b_offset.x+b_w, b_offset.y:b_offset.y+b_h] = b_holder[b_offset.x:b_offset.x+b_w, b_offset.y:b_offset.y+b_h] + b
-		result.matrix = a_holder + b_holder
-		print a_holder
-		print b_holder
-		print result
-		return result 
-
+	@staticmethod
+	def neighbours(matrix, x, y):
+		X, Y = matrix.shape
+		print X, Y
+		return [(x2, y2) for x2 in range(x-1, x+2)
+           for y2 in range(y-1, y+2)
+           if (-1 < x <= X and
+               -1 < y <= Y and
+               (x != x2 or y != y2) and
+               (x == x2 or y == y2) and # Not diagonal neighbours
+               (0 <= x2 < X) and
+               (0 <= y2 < Y))]
 
 
 class UnallowableMerge(Exception):
@@ -160,32 +206,68 @@ class Letter():
 	def __init__(self, letter):
 		self.string = letter
 		self.checked = False
+		self.reserved = False
+
+	def __eq__(self, other):
+		if not self.string or not other.string:
+			return False
+		else:
+			return self.string == other.string
 
 	def __repr__(self):
+		if self.checked:
+			return "@"
+		if self.reserved and self.string:
+			return "!"
+		if self.reserved and not self.string:
+			return "#"
 		if self.string is None:
 			return "_"
 		return str(self.string)
 
 	def __add__(self, other):
+		if (self.reserved or other.reserved) and (self.string or other.string):
+			raise UnallowableMerge("Can't merge next to each other")
 		if self.string is None:
-			return other
+			return other.clone()
 		if other.string is None:
-			return self
+			return self.clone()
 		if self.string == other.string:
-			self.checked = True
-			return self
+			result = self.clone()
+			result.checked = True
+			return result
 		raise UnallowableMerge("Can't merge letters1")
-
 
 	def __radd__(self, other):
+		if (self.reserved or other.reserved) and (self.string or other.string):
+			raise UnallowableMerge("Can't merge next to each other")
 		if self.string is None:
 			return other
 		if other.string is None:
 			return self
 		if self.string == other.string:
-			self.checked = True
-			return self
-		raise UnallowableMerge("Can't merge letters1")
+			result = self.clone()
+			result.checked = True
+			return result
+		raise UnallowableMerge("Can't merge letters2")
+
+	def clone(self):
+		letter = Letter(self.string)
+		letter.reserved = self.reserved
+		letter.checked = self.checked
+		return letter
+
+	def get_reserved(self):
+		letter = self.clone()
+		letter.reserved = True
+		return letter
+
+	def get_unreserved(self):
+		letter = self.clone()
+		letter.reserved = False
+		return letter
+
+
 
 
 a = Grid().set_word("hello")
@@ -196,6 +278,8 @@ c = Grid().set_word("rofl")
 d = Grid().set_word("ree")
 merged_2 = c.merge(Point(0,0), d.rotated(), Point(0,0))
 
-
 merged_2.merge(Point(0,3), merged, Point(0,2))
+
+
+
 
