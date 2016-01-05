@@ -22,21 +22,23 @@ class Grid():
 	def __init__(self):
 		pass
 
+	def letters(self):
+		return [letter for letter in row for row in self.matrix]
+
 	def set_word(self, word):
-		self.words = [word]
+		self.words = set([word])
 		self.matrix = np.array([map(lambda x: Letter(x), list(word))])
+		for letter in self.letter:
+			letter.orientation = "h"
 		return self
 
 	def score(self):
 		# This is the intersection/word ratio, because I basically thought 
 		# that might be a smart way to do it, no better basis than that
-		try:
-			score = float(self.num_intersections()) / len(self.words) 
-		except:
-			print " ____ "
-			print self
-			print self.words
-		return score
+
+		# We add one to give the single words more of a chance in the early days
+		return float(self.num_intersections() + 1) / (len(self.words)) 
+
 
 	def num_intersections(self):
 		intersections = 0
@@ -70,6 +72,8 @@ class Grid():
 		grid = Grid()
 		grid.words = self.words
 		grid.matrix = np.rot90(self.matrix, 3) # Rotates 270 counter-clockwise
+		for letter in self.letters:
+			letter.orientation = "v"
 		return grid
 
 
@@ -109,9 +113,9 @@ class Grid():
 		result = Grid()
 
 		# Calculate the words section
-		if set(self.words) & set(b_grid.words):
+		if self.words & b_grid.words:
 			raise UnallowableMerge("Two grids already have words used in common")
-		result.words = list(set(self.words) | set(b_grid.words))
+		result.words = self.words | b_grid.words
 
 		# calculate the offset between a and b
 		offset = a_location - b_location
@@ -174,8 +178,8 @@ class Grid():
 		# Add them together, and save in result.
 		# The add methods of Letter will deal with most of the matching work
 		result.matrix = a_holder + b_holder
-		print len(result.words)
 
+		print len(result.words)
 		return result 
 
 	@staticmethod
@@ -237,6 +241,7 @@ class Letter():
 		self.string = letter
 		self.checked = False
 		self.reserved = False
+		self.orientation = None
 
 	def __eq__(self, other):
 		if not self.string or not other.string:
@@ -310,36 +315,51 @@ def matching_points(a,b):
 
 def make_optimal_grid(words):
 	grids = []
+	tried_pairs = set()
 	for word in words:
-		grid = Grid()
-		grid.set_word(word)
-		grids.append(grid)
-		grids.append(grid.rotated())
+		grid0 = Grid()
+		grid0.set_word(word)
+		grids.append(grid0)
+		grids.append(grid0.rotated())
 
 	while True:
+		best = (0, 0, None)
+
 		grids = sorted(grids, key=lambda x: x.score(), reverse=True)
 		print grids[0]
-		for i in range(len(grids)):
+		length = len(grids)
+		for i in range(length):
 			merged = False
 			grid1 = grids[i]
-			for grid2 in grids[i:]:
+			for grid2 in filter(lambda g: not (g.words & grid1.words), grids[i:length]):
+				key = (str(grid1), str(grid2))
+				if key in tried_pairs:
+					continue
 				for (x1,y1,x2,y2) in matching_points(grid1, grid2):
 					try:
 						new = grid1.merge(Point(x1,y1), grid2, Point(x2,y2))
-						grids.append(new)
+						if new not in grids:
+							print "yay"
+							print "{} / {}".format(new.score(), len(new.words))
+							if (len(new.words) > best[1]):
+								best = (new.score(), len(new.words), new)
+							grids.append(new)
 						print(len(grids))
-					except: 
+						print best[2]
+					except UnallowableMerge: 
 						pass
 					else:
 						merged = True
+				tried_pairs.add(key)
 				if merged:
 					break
-		if not merged:
-			return grids
+		# if not merged:
+		# 	return grids
 
-	# TODO: Memoize so we don't try shit again
-	# TOOD: Pre-filter the list so we don't try things which don't match word-wise
+	# DONE: TODO: Memoize so we don't try shit again
+	# DONE: TOOD: Pre-filter the list so we don't try things which don't match word-wise
 
+	# TODO: Are we undercounting the number of intersections?
 
 
 
