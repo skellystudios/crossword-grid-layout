@@ -27,6 +27,17 @@ class Grid():
 		self.matrix = np.array([map(lambda x: Letter(x), list(word))])
 		return self
 
+	def score(self):
+		# This is the intersection/word ratio, because I basically thought 
+		# that might be a smart way to do it, no better basis than that
+		try:
+			score = float(self.num_intersections()) / len(self.words) 
+		except:
+			print " ____ "
+			print self
+			print self.words
+		return score
+
 	def num_intersections(self):
 		intersections = 0
 		w, h = self.matrix.shape
@@ -100,7 +111,7 @@ class Grid():
 		# Calculate the words section
 		if set(self.words) & set(b_grid.words):
 			raise UnallowableMerge("Two grids already have words used in common")
-		result.words = list(set(self.words) & set(b_grid.words))
+		result.words = list(set(self.words) | set(b_grid.words))
 
 		# calculate the offset between a and b
 		offset = a_location - b_location
@@ -124,45 +135,46 @@ class Grid():
 		# We do two passes: the first to work out where there are going to be checked squares so we can 
 		pass_one = a_holder + b_holder
 
-		print pass_one
+		# print pass_one
 
 		# We now want to make sure that squares next to an already taken square are reserved white space
 		# (Unless they're next to a square that becomes checked - will need to deal with that later)
 
 		for x in range(height):
 			for y in range(width):
-				print "__________"
-				print "__________"
-				print "__________"
-				print a_holder
-				print b_holder
-				print "" + str(x) + ", " + str(y)
-				print a_holder[x][y]
-				print Grid.neighbours(a_holder, x, y)
+				# print "__________"
+				# print "__________"
+				# print "__________"
+				# print a_holder
+				# print b_holder
+				# print "" + str(x) + ", " + str(y)
+				# print a_holder[x][y]
+				# print Grid.neighbours(a_holder, x, y)
 				neighbours = Grid.neighbours(a_holder, x, y)
 				for x1, y1 in neighbours:
 					if a_holder[x1][y1].string and not a_holder[x][y].string:
 						a_holder[x][y] = a_holder[x][y].get_reserved()
-						print "bingo a"
+						# print "bingo a"
 					if b_holder[x1][y1].string and not b_holder[x][y].string:
 						b_holder[x][y] = b_holder[x][y].get_reserved()
-						print b_holder[x][y]
-						print "bingo b"
+						# print b_holder[x][y]
+						# print "bingo b"
 				for x1, y1 in neighbours:
 					if pass_one[x1][y1].checked:
-						print "wowzer"
+						# print "wowzer"
 						a_holder[x][y] = a_holder[x][y].get_unreserved()
 						b_holder[x][y] = b_holder[x][y].get_unreserved()
 
-		print ""
-		print ""
+		# print ""
+		# print ""
 
-		print a_holder
-		print b_holder
+		# print a_holder
+		# print b_holder
 
 		# Add them together, and save in result.
 		# The add methods of Letter will deal with most of the matching work
 		result.matrix = a_holder + b_holder
+		print len(result.words)
 
 		return result 
 
@@ -188,7 +200,7 @@ class Grid():
 	@staticmethod
 	def neighbours(matrix, x, y):
 		X, Y = matrix.shape
-		print X, Y
+		# print X, Y
 		return [(x2, y2) for x2 in range(x-1, x+2)
            for y2 in range(y-1, y+2)
            if (-1 < x <= X and
@@ -233,12 +245,12 @@ class Letter():
 			return self.string == other.string
 
 	def __repr__(self):
-		if self.checked:
-			return "@"
-		if self.reserved and self.string:
-			return "!"
-		if self.reserved and not self.string:
-			return "#"
+		# if self.checked:
+		# 	return "@"
+		# if self.reserved and self.string:
+		# 	return "!"
+		# if self.reserved and not self.string:
+		# 	return "#"
 		if self.string is None:
 			return "_"
 		return str(self.string)
@@ -288,11 +300,41 @@ class Letter():
 
 def matching_points(a,b):
 	return [
-	 ((x1,y1),(x2,y2)) 
+	 (x1,y1,x2,y2) 
 	 for (l1, x1, y1) in a.unchecked_letters() 
 	 for (l2, x2, y2) in b.unchecked_letters()
 	 if l1 == l2
 	]
+
+
+
+def make_optimal_grid(words):
+	grids = []
+	for word in words:
+		grid = Grid()
+		grid.set_word(word)
+		grids.append(grid)
+		grids.append(grid.rotated())
+
+	while True:
+		grids = sorted(grids, key=lambda x: x.score(), reverse=True)
+		print grids[0]
+		for i in range(len(grids)):
+			merged = False
+			grid1 = grids[i]
+			for grid2 in grids[i:]:
+				for (x1,y1,x2,y2) in matching_points(grid1, grid2):
+					try:
+						new = grid1.merge(Point(x1,y1), grid2, Point(x2,y2))
+						grids.append(new)
+					except: 
+						pass
+					else:
+						merged = True
+				if merged:
+					break
+		if not merged:
+			return grids
 
 
 
@@ -306,8 +348,9 @@ c = Grid().set_word("rofl")
 d = Grid().set_word("ree")
 merged_2 = c.merge(Point(0,0), d.rotated(), Point(0,0))
 
-merged_2.merge(Point(0,3), merged, Point(0,2))
+# merged_2.merge(Point(0,3), merged, Point(0,2))
 
 
-
+def test():
+	make_optimal_grid(["hello", "michael", "hatter", "lollypop", "apple", "purple", "green", "custard", "timestable", "constable", "eriksson", "pherenome"])
 
