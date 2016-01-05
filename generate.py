@@ -327,6 +327,7 @@ def make_optimal_grid(words):
 					try:
 						new = grid1.merge(Point(x1,y1), grid2, Point(x2,y2))
 						grids.append(new)
+						print(len(grids))
 					except: 
 						pass
 					else:
@@ -335,6 +336,10 @@ def make_optimal_grid(words):
 					break
 		if not merged:
 			return grids
+
+	# TODO: Memoize so we don't try shit again
+	# TOOD: Pre-filter the list so we don't try things which don't match word-wise
+
 
 
 
